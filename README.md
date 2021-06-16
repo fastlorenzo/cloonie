@@ -2,6 +2,10 @@
 
 Script to decrypt / import chromium (edge/chrome) cookies.
 
+## Requirements
+
+Install the python dependencies via pip: `pip install -r requirements.txt`
+
 ## Usage
 
 ```
