@@ -142,8 +142,8 @@ def export_cookies(input_file, input_key, input_os, domfilter):
 
     return cookies
 
-def import_cookies(cookies, output_file, output_key, output_os, domfilter):
-    print('%s[+] Re-encrypting cookies with domain filter \'%%%s%%\' (%s) and exporting them to %s%s' % (bcolors.HEADER, domfilter, output_os, output_file, bcolors.ENDC))
+def import_cookies_chromium(cookies, output_file, output_key, output_os, domfilter):
+    print('%s[+] [Chromium] Re-encrypting cookies with domain filter \'%%%s%%\' (%s) and exporting them to %s%s' % (bcolors.HEADER, domfilter, output_os, output_file, bcolors.ENDC))
 
     if output_os == 'windows':
         key = base64.b64decode(output_key)
@@ -179,11 +179,9 @@ def import_cookies(cookies, output_file, output_key, output_os, domfilter):
             '',
             cookie['path'],
             cookie['expires_utc'],
-            #13999999999999999,
             cookie['is_secure'],
             cookie['is_httponly'],
             cookie['last_access_utc'],
-            #13999999999999999,
             cookie['has_expires'],
             cookie['is_persistent'],
             cookie['priority'],
@@ -194,6 +192,45 @@ def import_cookies(cookies, output_file, output_key, output_os, domfilter):
             cookie['is_same_party']
         )
         sql = 'INSERT INTO cookies(creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        cur = conn.cursor()
+        if DEBUG or OUTPUT_COOKIE_VALUE:
+            print('IMPORTING [%s%s%s][%s%s%s] %s%s%s' % (bcolors.OKCYAN, cookie['host_key'].decode('utf-8'), bcolors.ENDC, bcolors.OKBLUE, cookie['name'].decode('utf-8'), bcolors.ENDC, bcolors.WARNING, cookie['decrypted_value'].decode('utf-8'), bcolors.ENDC))
+        cur.execute(sql, f_cookie)
+        conn.commit()
+
+def import_cookies_firefox(cookies, output_file, domfilter):
+    print('%s[+] [Firefox] Selected cookies with domain filter \'%%%s%%\' and exporting them to %s%s' % (bcolors.HEADER, domfilter, output_file, bcolors.ENDC))
+
+    conn = sqlite3.connect(output_file)
+    cur = conn.cursor()
+    conn.text_factory = bytes
+
+    print('%s[!] Deleting previous cookies%s' % (bcolors.WARNING, bcolors.ENDC))
+    # First, delete all related cookies from the destination file
+    sql = 'DELETE FROM moz_cookies WHERE host LIKE "%{}%"'.format(domfilter)
+    cur.execute(sql)
+    conn.commit()
+
+    # For each cookies, inject them
+    for cookie in cookies:
+
+        f_cookie = (
+            cookie['name'].decode('utf-8'),
+            cookie['decrypted_value'].decode('utf-8'),
+            cookie['host_key'].decode('utf-8'),
+            cookie['path'],
+            #converting webkit timestamp to unix/firefox timestamp
+            max((int(cookie['expires_utc']))-11644473600000000,0),
+            max((int(cookie['last_access_utc']))-11644473600000000,0),
+            max((int(cookie['last_access_utc']))-11644473600000000,0),
+            cookie['is_secure'],
+            cookie['is_httponly'],
+            0,
+            cookie['samesite'],
+            cookie['samesite'],
+            0
+        )
+        sql = 'INSERT INTO moz_cookies(name, value, host, path, expiry, lastAccessed, creationTime, isSecure, isHttpOnly, inBrowserElement, sameSite, rawSameSite) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         cur = conn.cursor()
         if DEBUG or OUTPUT_COOKIE_VALUE:
             print('IMPORTING [%s%s%s][%s%s%s] %s%s%s' % (bcolors.OKCYAN, cookie['host_key'].decode('utf-8'), bcolors.ENDC, bcolors.OKBLUE, cookie['name'].decode('utf-8'), bcolors.ENDC, bcolors.WARNING, cookie['decrypted_value'].decode('utf-8'), bcolors.ENDC))
@@ -246,6 +283,11 @@ if __name__ == '__main__':
 
     # If an output file is provided, import the cookies in the store
     if args.outfile:
-        import_cookies(cookies, args.outfile, args.outkey, args.outos, args.domain)
+        if '.sqlite' in args.outfile:
+            #outfile contains .sqlite so assuming Firefox cookie database
+            import_cookies_firefox(cookies, args.outfile, args.domain)
+        else:
+            #Chromium cookie database
+            import_cookies_chromium(cookies, args.outfile, args.outkey, args.outos, args.domain)
 
     print('%s[+] Done%s' % (bcolors.HEADER, bcolors.ENDC))
