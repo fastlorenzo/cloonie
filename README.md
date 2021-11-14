@@ -36,9 +36,18 @@ optional arguments:
 
 `./cloonie.py --inkey <BASE64_KEY> --infile Cookies --output --outfile ~/.config/chromium/Default/Cookies`
 
+### Decrypt Windows Cookies and import them in firefox on Linux
+
+`./cloonie.py --inkey <BASE64_KEY> --infile Cookies --outfile ~/.mozilla/firefox/<profile folder>/cookies.sqlite`
+
 ### Decrypt Windows Cookies and import them in chromium on Linux for a specific domain
 
 `./cloonie.py --inkey <BASE64_KEY> --infile Cookies --output --outfile ~/.config/chromium/Default/Cookies --domain microsoft.com`
+
+### Decrypt Windows Cookies and import them in firefox on Linux for a specific domain
+
+`./cloonie.py --inkey <BASE64_KEY> --infile Cookies --output --outfile ~/.mozilla/firefox/<profile folder>/cookies.sqlite --domain microsoft.com`
+
 
 ## Sources
 
