@@ -91,18 +91,19 @@ def export_cookies(input_file, input_key, input_os, domfilter):
     conn = sqlite3.connect(input_file)
     cur = conn.cursor()
     conn.text_factory = bytes
-    sql = 'SELECT creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party FROM cookies WHERE host_key LIKE "%{}%"'.format(domfilter)
+    sql = 'SELECT creation_utc, host_key, top_frame_site_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party, last_update_utc FROM cookies WHERE host_key LIKE "%{}%"'.format(domfilter)
 
     cookies = []
 
     # Execute the query
     cur.execute(sql)
 
-    for creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party in cur.fetchall():
+    for creation_utc, host_key, top_frame_site_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party, last_update_utc in cur.fetchall():
 
         cookie = {
             'creation_utc': creation_utc,
             'host_key': host_key,
+            'top_frame_site_key': top_frame_site_key,
             'name': name,
             'value': value,
             'path': path,
@@ -118,6 +119,7 @@ def export_cookies(input_file, input_key, input_os, domfilter):
             'source_scheme': source_scheme,
             'source_port': source_port,
             'is_same_party': is_same_party,
+            'last_update_utc': last_update_utc,
             'decrypted_value': None
         }
 		
@@ -175,6 +177,7 @@ def import_cookies_chromium(cookies, output_file, output_key, output_os, domfilt
         f_cookie = (
             cookie['creation_utc'],
             cookie['host_key'].decode('utf-8'),
+            cookie['top_frame_site_key'],
             cookie['name'].decode('utf-8'),
             '',
             cookie['path'],
@@ -189,9 +192,10 @@ def import_cookies_chromium(cookies, output_file, output_key, output_os, domfilt
             cookie['samesite'],
             cookie['source_scheme'],
             cookie['source_port'],
-            cookie['is_same_party']
+            cookie['is_same_party'],
+            cookie['last_update_utc']
         )
-        sql = 'INSERT INTO cookies(creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        sql = 'INSERT INTO cookies(creation_utc, host_key, top_frame_site_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc, has_expires, is_persistent, priority, encrypted_value, samesite, source_scheme, source_port, is_same_party, last_update_utc) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         cur = conn.cursor()
         if DEBUG or OUTPUT_COOKIE_VALUE:
             print('IMPORTING [%s%s%s][%s%s%s] %s%s%s' % (bcolors.OKCYAN, cookie['host_key'].decode('utf-8'), bcolors.ENDC, bcolors.OKBLUE, cookie['name'].decode('utf-8'), bcolors.ENDC, bcolors.WARNING, cookie['decrypted_value'].decode('utf-8'), bcolors.ENDC))
